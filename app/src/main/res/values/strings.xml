@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">GiveMePhoto</string>
+
+    <string name="navigation_drawer_open">Open navigation drawer</string>
+    <string name="navigation_drawer_close">Close navigation drawer</string>
+
+    <string name="action_settings">Settings</string>
+    <integer name="com_vk_sdk_AppId">5726925</integer>
+</resources>
