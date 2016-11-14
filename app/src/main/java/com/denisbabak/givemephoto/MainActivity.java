@@ -6,10 +6,16 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
+import android.provider.MediaStore;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
+import android.support.v4.content.ContextCompat;
+import android.support.v4.content.FileProvider;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
@@ -55,7 +61,9 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
@@ -110,8 +118,7 @@ public class MainActivity extends AppCompatActivity
                 builder.setPositiveButton("Set", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialogInterface, int i) {
-                        File c = new File(getCacheDir(), "cropped.png");
-                        UCrop.of(Uri.parse(url), Uri.fromFile(c)).start(MainActivity.this);
+                        cropAndSet(url);
                     }
                 });
                 builder.setNegativeButton("Save", new DialogInterface.OnClickListener() {
@@ -142,13 +149,25 @@ public class MainActivity extends AppCompatActivity
         adView.loadAd(adRequest);
     }
 
+    private void cropAndSet(final String url) {
+        File c = new File(getCacheDir(), "cropped.png");
+        UCrop.Options options = new UCrop.Options();
+        options.setCompressionQuality(100);
+        options.setCompressionFormat(Bitmap.CompressFormat.PNG);
+        options.setStatusBarColor(ContextCompat.getColor(getApplicationContext(), R.color.colorPrimary));
+        options.setToolbarColor(ContextCompat.getColor(getApplicationContext(), R.color.colorPrimary));
+        UCrop.of(Uri.parse(url), Uri.fromFile(c)).withOptions(options).start(MainActivity.this);
+    }
+
     void authorize() {
         VKSdk.login(this);
     }
 
     @Override
     protected void onActivityResult(int requestCode, final int resultCode, Intent data) {
-        if (resultCode == RESULT_OK && requestCode == UCrop.REQUEST_CROP) {
+        if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
+            cropAndSet(mCurrentPhotoPath);
+        } else if (resultCode == RESULT_OK && requestCode == UCrop.REQUEST_CROP) {
             final Uri resultUri = UCrop.getOutput(data);
             new Thread(new Runnable() {
                 @Override
@@ -250,6 +269,46 @@ public class MainActivity extends AppCompatActivity
         return super.onOptionsItemSelected(item);
     }
 
+    static final int REQUEST_IMAGE_CAPTURE = 1;
+    String mCurrentPhotoPath;
+    private File createImageFile() throws IOException {
+        // Create an image file name
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+        String imageFileName = "JPEG_" + timeStamp + "_";
+        File storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
+        File image = File.createTempFile(
+                imageFileName,  /* prefix */
+                ".jpg",         /* suffix */
+                storageDir      /* directory */
+        );
+
+        // Save a file: path for use with ACTION_VIEW intents
+        mCurrentPhotoPath = "file:" + image.getAbsolutePath();
+        return image;
+    }
+    private void dispatchTakePictureIntent() {
+        Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+        // Ensure that there's a camera activity to handle the intent
+        if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
+            // Create the File where the photo should go
+            File photoFile = null;
+            try {
+                photoFile = createImageFile();
+            } catch (IOException ex) {
+                // Error occurred while creating the File
+                ex.printStackTrace();
+            }
+            // Continue only if the File was successfully created
+            if (photoFile != null) {
+                Uri photoURI = FileProvider.getUriForFile(this,
+                        "com.denisbabak.givemephoto.fileprovider",
+                        photoFile);
+                takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI);
+                startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE);
+            }
+        }
+    }
+
     @SuppressWarnings("StatementWithEmptyBody")
     @Override
     public boolean onNavigationItemSelected(MenuItem item) {
@@ -257,7 +316,7 @@ public class MainActivity extends AppCompatActivity
         int id = item.getItemId();
 
         if (id == R.id.nav_camera) {
-            // Handle the camera action
+            dispatchTakePictureIntent();
         } else if (id == R.id.nav_art) {
             loadData(WallpaperMode.ART.toString());
         } else if (id == R.id.nav_nature) {
