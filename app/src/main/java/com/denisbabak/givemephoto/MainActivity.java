@@ -1,13 +1,16 @@
 package com.denisbabak.givemephoto;
 
+import android.app.DownloadManager;
 import android.app.WallpaperManager;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
@@ -26,6 +29,9 @@ import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.denisbabak.givemephoto.net.api.VolleyInstance;
+import com.google.android.gms.ads.AdRequest;
+import com.google.android.gms.ads.AdView;
+import com.google.android.gms.ads.MobileAds;
 import com.vk.sdk.VKAccessToken;
 import com.vk.sdk.VKCallback;
 import com.vk.sdk.VKSdk;
@@ -60,6 +66,7 @@ public class MainActivity extends AppCompatActivity
     RecyclerView.LayoutManager mLayoutManager;
     PhotoAdapter adapter;
     WallpaperMode mode = WallpaperMode.NATURE;
+    AdView adView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -96,9 +103,28 @@ public class MainActivity extends AppCompatActivity
         // specify an adapter (see also next example)
         adapter = new PhotoAdapter(this, new WallpaperActionInterface() {
             @Override
-            public void setWallpaper(String url) {
-                File c = new File(getCacheDir(), "cropped.png");
-                UCrop.of(Uri.parse(url), Uri.fromFile(c)).start(MainActivity.this);
+            public void setWallpaper(final String url) {
+                AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+                builder.setCancelable(true);
+                builder.setMessage("Would You like to set this wallpaper or just save it?");
+                builder.setPositiveButton("Set", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i) {
+                        File c = new File(getCacheDir(), "cropped.png");
+                        UCrop.of(Uri.parse(url), Uri.fromFile(c)).start(MainActivity.this);
+                    }
+                });
+                builder.setNegativeButton("Save", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i) {
+                        DownloadManager dM = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
+                        if(dM != null) {
+                            DownloadManager.Request downloadRequest = new DownloadManager.Request(Uri.parse(url));
+                            dM.enqueue(downloadRequest);
+                        }
+                    }
+                });
+                builder.create().show();
             }
         });
         recyclerView.setAdapter(adapter);
@@ -109,6 +135,11 @@ public class MainActivity extends AppCompatActivity
         } else {
             loadData(mode.toString());
         }
+
+        adView = (AdView) findViewById(R.id.adView);
+        MobileAds.initialize(getApplicationContext(), "ca-app-pub-5806966430875275~9563399577");
+        AdRequest adRequest = new AdRequest.Builder().build();
+        adView.loadAd(adRequest);
     }
 
     void authorize() {

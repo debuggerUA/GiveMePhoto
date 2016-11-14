@@ -57,12 +57,11 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
 
     @Override
     public void onBindViewHolder(ViewHolder holder, final int position) {
-        Log.d("GiveMeWallpapers", "onBindViewHolder() " + position + " : " + models.get(position).photo_807);
         ControllerListener listener = new BaseControllerListener();
 
         DraweeController controller = Fresco.newDraweeControllerBuilder()
                 .setUri(Uri.parse(models.get(position).photo_604))
-                .setTapToRetryEnabled(true)
+                .setTapToRetryEnabled(false)
                 .setOldController(holder.photo.getController())
                 .setControllerListener(listener)
                 .build();

@@ -6,4 +6,5 @@
 
     <string name="action_settings">Settings</string>
     <integer name="com_vk_sdk_AppId">5726925</integer>
+    <string name="banner_ad_unit_id">ca-app-pub-5806966430875275/2040132776</string>
 </resources>
